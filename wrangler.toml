@@ -40,3 +40,7 @@ new_sqlite_classes = ["DailyCounter"]
 #   Local:      .dev.vars   (git-ignored, see .dev.vars.example)
 #   Production: npx wrangler secret put GEMINI_API_KEY
 #               npx wrangler secret put TURNSTILE_SECRET
+
+# Persist Worker logs (error codes only; case text is never logged) so failures can be inspected later.
+[observability]
+enabled = true

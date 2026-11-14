@@ -120,9 +120,16 @@ async function deliberate(request, env, url) {
       clearTimeout(timer);
     }
     if (!res.ok) {
-      console.error('deliberate: upstream status', res.status);
+      // Log only Google's status enum (e.g. INVALID_ARGUMENT), never the message: it may echo the case text.
+      let reason = '';
+      try { reason = String((await res.json())?.error?.status || '').slice(0, 40); } catch { /* not JSON */ }
+      console.error('deliberate: upstream status', res.status, reason);
       if (res.status === 429) return json({ error: 'overload' }, 429);
-      return json({ error: 'upstream_error', status: res.status }, 502);
+      const error = res.status === 400 ? 'upstream_rejected'
+        : (res.status === 401 || res.status === 403) ? 'upstream_auth'
+        : res.status >= 500 ? 'upstream_unavailable'
+        : 'upstream_error';
+      return json({ error, status: res.status, reason }, 502);
     }
     upstream = await res.json();
   }

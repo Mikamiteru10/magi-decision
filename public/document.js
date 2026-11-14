@@ -128,7 +128,7 @@ async function deliberate() {
   playVoting();
 
   const started = performance.now();
-  let result = null, error = null;
+  let result = null, error = null, errorDetail = '';
   try {
     const turnstileToken = await turnstile.token();
     const res = await fetch('/api/deliberate', {
@@ -137,7 +137,11 @@ async function deliberate() {
       body: JSON.stringify({ ...state.caseData, ageConfirmed: state.ageOk, turnstileToken }),
     });
     const data = await res.json().catch(() => ({}));
-    if (res.ok) result = data; else error = data.error || `http_${res.status}`;
+    if (res.ok) result = data;
+    else {
+      error = data.error || `http_${res.status}`;
+      if (data.status) errorDetail = [data.status, data.reason].filter(Boolean).join(' ');
+    }
   } catch (e) {
     error = 'network';
   }
@@ -147,7 +151,7 @@ async function deliberate() {
 
   state.busy = false;
   stopAll();
-  if (error) { state.result = null; renderError(error); return; }
+  if (error) { state.result = null; renderError(error, errorDetail); return; }
   state.result = result;
   render(true);
 }
@@ -164,8 +168,14 @@ const ERROR_TEXT = {
   empty_proposal: '提案为空。',
   too_long: '提案或背景过长（提案 ≤ 300 字，背景 ≤ 1500 字）。',
   server_misconfigured: '服务端未配置 API Key（检查 .dev.vars）。',
+  upstream_rejected: '提案被模型拒绝受理：可能触发了 Google 的内容安全策略，或格式不被接受。请换一种说法再试。',
+  upstream_auth: '服务端 API Key 无效或无权限，请联系站点管理员。',
+  upstream_unavailable: '回線途絶：Gemini 服务暂时不可用，请稍后重试。',
+  upstream_error: '上游模型返回错误，请稍后重试。',
+  upstream_unreachable: '回線途絶：无法连接到 Gemini 服务。',
+  upstream_shape: '上游模型返回了无法解析的结果，请重试。',
 };
-function renderError(code) {
+function renderError(code, detail = '') {
   bodyEl.setAttribute('data-status', 'voted');
   bodyEl.setAttribute('data-vote-status', 'error');
   finalEl.setAttribute('data-status', 'error');
@@ -175,7 +185,8 @@ function renderError(code) {
     items[k].setAttribute('data-status', 'error');
     items[k].querySelector('.detail').textContent = '';
   }
-  showNotice(ERROR_TEXT[code] || `ERROR：${code}`);
+  const text = ERROR_TEXT[code] || `ERROR：${code}`;
+  showNotice(detail ? `${text}（${detail}）` : text);
   playResult(3400);
 }
 
