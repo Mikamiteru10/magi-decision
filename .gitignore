@@ -1,0 +1,17 @@
+# Secrets: never commit
+.dev.vars
+.env
+.env.*
+!.dev.vars.example
+!.env.example
+*.key
+
+# Build and tooling
+node_modules/
+.wrangler/
+public/document.css
+
+# Experiments: raw API responses and caches stay local
+experiments/results/
+__pycache__/
+.font-part-*.ttf

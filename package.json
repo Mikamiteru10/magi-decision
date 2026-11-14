@@ -1,0 +1,19 @@
+{
+  "name": "magi-web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "MAGI decision system on gemini-decision-1, UI forked from itorr/magi (MIT)",
+  "scripts": {
+    "setup-hooks": "git config core.hooksPath .githooks",
+    "build:css": "lessc styles/document.less public/document.css",
+    "dev": "npm run build:css && wrangler dev",
+    "test": "node --test",
+    "check-secrets": "node scripts/check-secrets.mjs --all",
+    "deploy": "npm test && npm run check-secrets && npm run build:css && wrangler deploy"
+  },
+  "devDependencies": {
+    "less": "^4.2.0",
+    "wrangler": "^4.162.0"
+  }
+}

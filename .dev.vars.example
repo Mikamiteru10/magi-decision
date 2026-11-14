@@ -1,0 +1,6 @@
+# Copy this file to .dev.vars (no other name) and fill in your DEVELOPMENT key.
+# .dev.vars is git-ignored. The production key goes in with: npx wrangler secret put GEMINI_API_KEY
+GEMINI_API_KEY=在这里粘贴开发用的API Key
+
+# 1 = fake answers, no API calls (for working on the UI without spending quota)
+MOCK=0

@@ -1,0 +1,13 @@
+name = "magi-web"
+main = "src/worker.js"
+compatibility_date = "2026-11-01"
+
+# Static files (the MAGI page) are served straight from ./public.
+# Requests that match no file, such as /api/deliberate, go to the Worker.
+[assets]
+directory = "./public"
+binding = "ASSETS"
+
+# Secrets are never written here.
+#   Local:      .dev.vars            (git-ignored, see .dev.vars.example)
+#   Production: npx wrangler secret put GEMINI_API_KEY

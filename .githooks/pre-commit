@@ -1,0 +1,3 @@
+#!/bin/sh
+# Runs before every commit once `npm run setup-hooks` has been run.
+node scripts/check-secrets.mjs || exit 1

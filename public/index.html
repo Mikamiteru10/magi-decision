@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MAGI System 決議系統</title>
+    <link rel="stylesheet" href="document.css">
+    <meta name="description" content="MAGI 三贤人决议系统：MELCHIOR、BALTHASAR、CASPER 三重人格对你的提案进行表决。">
+</head>
+<body data-loading="true">
+    <h2 class="magi-logo">MAGI</h2>
+    <div class="magi-box">
+        <header>
+            <h1>提訴</h1>
+            <h1>決議</h1>
+        </header>
+        <div class="config-box">
+            <h4>
+                Code:
+                <b class="code"></b>
+            </h4>
+            <p>
+                File:
+                <b class="file" title="点击输入提案">MAGI_SYS</b>
+            </p>
+            <p>
+                Volume:
+                <b class="volume" data-text="50"></b>
+            </p>
+            <p>
+                EX_MODE:
+                <b class="ex-mode"></b>
+            </p>
+            <p>
+                Priority:
+                <b class="priority" data-text="AA"></b>
+            </p>
+            <p>
+                Rule:
+                <b class="rule" data-text="AUTO"></b>
+            </p>
+            <p>
+                Sound:
+                <b class="sound"></b>
+            </p>
+            <b class="reset">RESET</b>
+        </div>
+        <div class="final-vote-status"></div>
+        <div class="magi-list">
+            <div class="magi-item melchior">
+                <h3>MELCHIOR</h3>
+                <h2></h2>
+                <p class="detail"></p>
+            </div>
+            <div class="magi-item malthasar">
+                <p class="detail"></p>
+                <h2></h2>
+                <h3>BALTHASAR</h3>
+            </div>
+            <div class="magi-item casper">
+                <h3>CASPER</h3>
+                <h2></h2>
+                <p class="detail"></p>
+            </div>
+        </div>
+        <div class="notice" hidden></div>
+        <footer>
+            <p class="advisory">MAGI 的决议仅为建议，最终决定权在你。</p>
+            <p>
+                UI <a href="https://github.com/itorr/magi" target="_blank" rel="noopener">itorr/magi</a>
+                ·
+                <a href="fonts/OFL-NotoSerifJP.txt" target="_blank" rel="noopener">字体 Noto Serif JP (OFL)</a>
+                ·
+                gemini-decision-1
+            </p>
+        </footer>
+    </div>
+
+    <div class="case-panel" hidden>
+        <form class="case-form" autocomplete="off">
+            <h3>提訴 · NEW CASE</h3>
+            <label for="proposal">提案（写成“是否……？”）</label>
+            <textarea id="proposal" maxlength="300" rows="3" required
+                placeholder="例：是否辞去稳定的工作，去做自己热爱的插画师？"></textarea>
+            <label for="context">背景（可选，补充越多越可靠）</label>
+            <textarea id="context" maxlength="1500" rows="4"
+                placeholder="例：存款够生活一年，家里有房贷……"></textarea>
+            <p class="case-hint">Ctrl + Enter 提交 · Esc 取消 · 内容不会被保存到服务器</p>
+            <div class="case-actions">
+                <button type="button" class="case-cancel">取消</button>
+                <button type="submit" class="case-submit">提訴</button>
+            </div>
+        </form>
+    </div>
+
+    <script type="module" src="document.js"></script>
+</body>
+</html>
