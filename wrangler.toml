@@ -2,6 +2,11 @@ name = "magi-decision"
 main = "src/worker.js"
 compatibility_date = "2026-11-01"
 
+# Custom domain (zone trailofnumber.com on Cloudflare). workers.dev stays enabled too.
+routes = [
+  { pattern = "magi.trailofnumber.com", custom_domain = true }
+]
+
 # Static files (the MAGI page) are served straight from ./public.
 # Requests that match no file, such as /api/deliberate, go to the Worker.
 [assets]
@@ -11,8 +16,8 @@ binding = "ASSETS"
 # Public, non-secret settings.
 [vars]
 DAILY_LIMIT = "3000"             # whole-site cap on deliberations per UTC day (cost ceiling)
-TURNSTILE_SITE_KEY = ""          # public site key from the Cloudflare Turnstile dashboard
-
+TURNSTILE_SITE_KEY = "0x4AAAAAAGAse1ut6h-CdhOl"          # public site key from the Cloudflare Turnstile dashboard
+BLOCKED_COUNTRIES = "MO"
 # Burst limit per visitor: 6 deliberations per 60 s (approximate, per Cloudflare location).
 [[ratelimits]]
 name = "BURST_LIMITER"
