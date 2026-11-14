@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="data:,">
+    <title>使用条款与隐私说明 · MAGI System</title>
+    <link rel="stylesheet" href="terms.css">
+</head>
+<body>
+<main>
+    <h1>使用条款与隐私说明</h1>
+    <p class="meta">生效日期：2026-11-14 · 维护者：<a href="https://github.com/Mikamiteru10/magi-decision">Mikamiteru10/magi-decision</a></p>
+
+    <h2>1. 这是什么</h2>
+    <p>MAGI System 是一个非官方的同人娱乐项目，与 khara、GAINAX、Google 均无关联。三台 MAGI 的“承認 / 否定”由 Google 的决策模型 <code>gemini-decision-1</code> 给出，<b>只是供参考的建议</b>，不构成医疗、法律、财务、心理或任何其他专业意见。最终决定由你自己做出，并由你自己负责。</p>
+
+    <h2>2. 年龄要求</h2>
+    <p>本站<b>仅面向年满 18 岁的用户</b>。这是 Gemini API 使用条款的要求。未满 18 岁请不要使用。</p>
+
+    <h2>3. 你输入的内容去了哪里</h2>
+    <ul>
+        <li>你输入的提案和背景会通过本站服务器（Cloudflare Workers）发送给 <b>Google Gemini API</b>，用来得出三台 MAGI 的投票概率。</li>
+        <li>本站使用 Gemini API 的<b>付费服务</b>。按照 Google 的条款，付费服务下 Google 不会用你的内容改进其产品，但会在有限时间内记录请求和响应，仅用于检测和防止违规使用。详见 <a href="https://ai.google.dev/gemini-api/terms">Gemini API Additional Terms of Service</a>。</li>
+        <li><b>本站不保存</b>你的提案、背景或结果，服务器日志里也不记录这些内容。</li>
+        <li>本站不使用 Cookie、广告或统计脚本。“已满 18 岁”的确认只保存在你自己的浏览器里（localStorage）。</li>
+    </ul>
+
+    <h2>4. 防滥用措施</h2>
+    <ul>
+        <li>本站使用 <a href="https://www.cloudflare.com/products/turnstile/">Cloudflare Turnstile</a> 进行人机验证，并按 IP 地址限制请求频率。这些处理由 Cloudflare 完成，适用 <a href="https://www.cloudflare.com/privacypolicy/">Cloudflare 隐私政策</a>。</li>
+        <li>全站每天最多进行 3000 次审议（按 UTC 日期计算），超过后当天暂停服务。</li>
+    </ul>
+
+    <h2>5. 请不要输入</h2>
+    <p>你自己或他人的敏感个人信息，例如真实姓名、证件号码、住址、联系方式、病历、财务账户等。描述问题时尽量概括，例如用“朋友 A”代替真实姓名。</p>
+
+    <h2>6. 可用地区</h2>
+    <p>Gemini API 只在部分国家和地区提供服务。在不受支持的地区（例如中国大陆、香港、澳门），审议功能无法使用。</p>
+
+    <h2>7. 开源与联系</h2>
+    <p>本站代码以 MIT 协议开源：<a href="https://github.com/Mikamiteru10/magi-decision">github.com/Mikamiteru10/magi-decision</a>。问题和建议请在 GitHub Issues 中提出。界面基于 <a href="https://github.com/itorr/magi">itorr/magi</a>（MIT）。</p>
+
+    <hr>
+
+    <h2 lang="en">English summary</h2>
+    <p lang="en">An unofficial fan project, not affiliated with khara, GAINAX or Google. Verdicts are advisory only and are not professional advice. <b>Adults (18+) only.</b> Your proposal is sent to the Google Gemini API (paid service: Google does not use it to improve its products, but logs requests for a limited time to detect abuse). This site does not store your text, uses no cookies or analytics, and keeps your 18+ confirmation only in your browser. Cloudflare Turnstile and per-IP rate limits protect against abuse; the whole site is capped at 3,000 deliberations per UTC day. Please do not enter sensitive personal information. Not available where the Gemini API is not offered.</p>
+
+    <p class="back"><a href="/">← 返回 MAGI</a></p>
+</main>
+</body>
+</html>

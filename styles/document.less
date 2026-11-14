@@ -740,3 +740,81 @@ footer{
         bottom: 3.5em;
     }
 }
+
+// 18+ confirmation (required by the Gemini API terms)
+.age-gate{
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, .94);
+    color: var(--color-orange);
+}
+.age-card{
+    outline: none;
+    width: min(560px, 88vw);
+    box-sizing: border-box;
+    padding: 1.3em 1.5em;
+    text-align: left;
+    font-size: 16px;
+    font-weight: 400;
+    line-height: 1.6;
+    font-family: 'Neue Helvetica', Helvetica, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    background: var(--color-black);
+    box-shadow:
+        0 0 0 2px var(--color-red),
+        0 0 0 6px var(--color-black),
+        0 0 0 8px var(--color-red);
+    h3{
+        color: var(--color-red);
+        font-size: 1.8em;
+        font-weight: 900;
+        font-family: 'MAGI Display', 'Noto Serif JP', serif;
+        letter-spacing: .1em;
+        margin-bottom: .5em;
+    }
+    p{ margin: .5em 0; }
+    a{ text-decoration: underline; }
+    .age-en{ font-size: .8em; opacity: .75; }
+    .case-actions{
+        margin-top: 1em;
+        display: flex;
+        justify-content: flex-end;
+        gap: .8em;
+    }
+    button{
+        font: inherit;
+        font-weight: 700;
+        letter-spacing: .1em;
+        padding: .4em 1.4em;
+        cursor: pointer;
+        border-radius: 0;
+        border: 2px solid var(--color-orange);
+        background: var(--color-black);
+        color: var(--color-orange);
+        &.age-enter{
+            background: var(--color-orange);
+            color: var(--color-black);
+        }
+        &:disabled{ opacity: .4; cursor: default; }
+        &:focus-visible{
+            outline: 2px solid var(--color-yellow);
+            outline-offset: 2px;
+        }
+    }
+}
+
+// Turnstile: invisible unless Cloudflare asks the visitor to click
+.ts-box{
+    position: fixed;
+    left: 50%;
+    bottom: 12px;
+    transform: translateX(-50%);
+    z-index: 15;
+}
+
+footer .advisory a{
+    text-decoration: underline;
+}

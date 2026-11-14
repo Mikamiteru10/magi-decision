@@ -1,29 +1,47 @@
-// MAGI Worker: serves the page (from ./public via the ASSETS binding) and one API route.
+// MAGI Worker: serves the page (from ./public via the ASSETS binding) and two API routes.
 //
-//   POST /api/deliberate   { "proposal": "是否……？", "context": "可选背景" }
-//   -> { votes, subs, globals, meta }   raw probabilities only; the browser applies Volume/Priority.
+//   GET  /api/config       -> { turnstileSiteKey, dailyLimit }        public settings for the page
+//   POST /api/deliberate   { proposal, context?, ageConfirmed, turnstileToken }
+//                          -> { votes, subs, globals, meta }          raw probabilities only;
+//                                                                     the browser applies Volume/Priority
 //
-// Security rules kept from day one (see design doc, 密钥安全清单):
-//   - the key lives only in env.GEMINI_API_KEY (.dev.vars locally, a Worker secret in production)
-//   - case text and request headers are never logged; errors log a status code only
-//   - same-origin requests only, small bodies only
+// Protections, checked in this order before any paid API call:
+//   same origin + size limits -> region -> 18+ confirmation -> Turnstile -> burst limit -> daily cap
+//
+// Security rules (see README):
+//   - keys live only in env (GEMINI_API_KEY, TURNSTILE_SECRET): .dev.vars locally, Worker secrets in production
+//   - case text, tokens and request headers are never logged; errors log a status code only
 
+import { DurableObject } from 'cloudflare:workers';
 import { TEMPLATE, INPUT_PREFIX, QUESTIONS, SCORE_LEVELS } from './personas.js';
 
 const ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/decisions';
+const SITEVERIFY = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
 const MODEL = 'gemini-decision-1';
 const PERSONAS = ['melchior', 'balthasar', 'casper'];
 const GLOBALS = ['is_decidable', 'info_sufficient', 'high_stakes', 'is_critical'];
-const LIMITS = { body: 8_000, proposal: 300, context: 1_500, timeoutMs: 15_000 };
+const LIMITS = { body: 10_000, proposal: 300, context: 1_500, timeoutMs: 15_000 };
+
+// Places where the Gemini API is not offered (checked 2026-11-14). The terms only allow making
+// API clients available within available regions. Override with the BLOCKED_COUNTRIES var.
+const DEFAULT_BLOCKED = 'CN,HK,MO';
 
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    if (url.pathname === '/api/config') return config(env);
     if (url.pathname === '/api/deliberate') return deliberate(request, env, url);
     if (url.pathname.startsWith('/api/')) return json({ error: 'not_found' }, 404);
     return env.ASSETS.fetch(request);
   },
 };
+
+function config(env) {
+  return json({
+    turnstileSiteKey: env.TURNSTILE_SITE_KEY || null,
+    dailyLimit: Number(env.DAILY_LIMIT || 3000),
+  }, 200);
+}
 
 async function deliberate(request, env, url) {
   if (request.method !== 'POST') return json({ error: 'method_not_allowed' }, 405);
@@ -37,16 +55,42 @@ async function deliberate(request, env, url) {
   const raw = await request.text();
   if (raw.length > LIMITS.body) return json({ error: 'too_large' }, 413);
 
-  let proposal, context;
-  try {
-    const body = JSON.parse(raw);
-    proposal = typeof body.proposal === 'string' ? body.proposal.trim() : '';
-    context = typeof body.context === 'string' ? body.context.trim() : '';
-  } catch {
-    return json({ error: 'bad_request' }, 400);
-  }
+  let body;
+  try { body = JSON.parse(raw); } catch { return json({ error: 'bad_request' }, 400); }
+  const proposal = typeof body.proposal === 'string' ? body.proposal.trim() : '';
+  const context = typeof body.context === 'string' ? body.context.trim() : '';
   if (proposal.length < 2) return json({ error: 'empty_proposal' }, 400);
   if (proposal.length > LIMITS.proposal || context.length > LIMITS.context) return json({ error: 'too_long' }, 400);
+
+  // Region: request.cf is absent in some local setups; then the check is skipped.
+  const country = request.cf?.country;
+  const blocked = (env.BLOCKED_COUNTRIES ?? DEFAULT_BLOCKED).split(',').map(s => s.trim()).filter(Boolean);
+  if (country && blocked.includes(country)) return json({ error: 'region_unavailable' }, 451);
+
+  if (body.ageConfirmed !== true) return json({ error: 'age_required' }, 403);
+
+  const ip = request.headers.get('CF-Connecting-IP') || 'local';
+
+  // Human check. Required whenever a secret is configured; only MOCK mode may run without one.
+  if (env.TURNSTILE_SECRET) {
+    const ok = await verifyTurnstile(env.TURNSTILE_SECRET, body.turnstileToken, ip);
+    if (!ok) return json({ error: 'turnstile_failed' }, 403);
+  } else if (env.MOCK !== '1') {
+    console.error('deliberate: TURNSTILE_SECRET is not set');
+    return json({ error: 'server_misconfigured' }, 500);
+  }
+
+  // Burst limit per visitor (approximate, per Cloudflare location).
+  if (env.BURST_LIMITER) {
+    const { success } = await env.BURST_LIMITER.limit({ key: ip });
+    if (!success) return json({ error: 'rate_limited' }, 429);
+  }
+
+  // Exact whole-site daily cap: the cost ceiling. Counted before the paid call.
+  const dailyLimit = Number(env.DAILY_LIMIT || 3000);
+  const counter = env.DAILY_COUNTER.get(env.DAILY_COUNTER.idFromName('global'));
+  const quota = await counter.consume(dailyLimit);
+  if (!quota.allowed) return json({ error: 'daily_limit' }, 429);
 
   const input = INPUT_PREFIX + proposal + (context ? `\n【背景】\n${context}` : '');
   const started = Date.now();
@@ -88,6 +132,22 @@ async function deliberate(request, env, url) {
   } catch (e) {
     console.error('deliberate: unexpected upstream shape');
     return json({ error: 'upstream_shape' }, 502);
+  }
+}
+
+async function verifyTurnstile(secret, token, ip) {
+  if (typeof token !== 'string' || !token || token.length > 2048) return false;
+  const form = new FormData();
+  form.append('secret', secret);
+  form.append('response', token);
+  if (ip !== 'local') form.append('remoteip', ip);
+  try {
+    const res = await fetch(SITEVERIFY, { method: 'POST', body: form });
+    const data = await res.json();
+    return data.success === true;
+  } catch (e) {
+    console.error('deliberate: siteverify unreachable');
+    return false;
   }
 }
 
@@ -141,4 +201,21 @@ function json(data, status) {
       'X-Content-Type-Options': 'nosniff',
     },
   });
+}
+
+// One instance ("global") holds today's count. Durable Objects run one request at a time,
+// so the count is exact across every Cloudflare location.
+export class DailyCounter extends DurableObject {
+  async consume(limit) {
+    const today = new Date().toISOString().slice(0, 10);
+    const storage = this.ctx.storage;
+    if ((await storage.get('day')) !== today) {
+      await storage.deleteAll();
+      await storage.put('day', today);
+    }
+    const count = (await storage.get('count')) || 0;
+    if (count >= limit) return { allowed: false, count };
+    await storage.put('count', count + 1);
+    return { allowed: true, count: count + 1 };
+  }
 }

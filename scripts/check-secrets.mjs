@@ -32,6 +32,8 @@ for (const f of files) {
   if (!existsSync(f) || statSync(f).size > 2_000_000) continue;
   let text;
   try { text = readFileSync(f, 'utf8'); } catch { continue; }
+  // Cloudflare's published Turnstile TEST keys (e.g. 1x0000000000000000000000000000000AA) are public by design.
+  text = text.replace(/\b[123]x0{20,}[A-F]{2}\b/g, '');
   for (const { name, re } of PATTERNS) if (re.test(text)) problems.push(`${f}: looks like it contains a ${name}`);
 }
 

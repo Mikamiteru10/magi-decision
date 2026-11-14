@@ -1,6 +1,14 @@
 # Copy this file to .dev.vars (no other name) and fill in your DEVELOPMENT key.
-# .dev.vars is git-ignored. The production key goes in with: npx wrangler secret put GEMINI_API_KEY
+# .dev.vars is git-ignored. Production values go in with `npx wrangler secret put ...` (see README).
 GEMINI_API_KEY=在这里粘贴开发用的API Key
 
 # 1 = fake answers, no API calls (for working on the UI without spending quota)
 MOCK=0
+
+# Cloudflare Turnstile TEST keys: they always pass and are safe to share.
+# Production uses your own site key (wrangler.toml) and secret (wrangler secret put TURNSTILE_SECRET).
+TURNSTILE_SITE_KEY=1x00000000000000000000AA
+TURNSTILE_SECRET=1x0000000000000000000000000000000AA
+
+# Lower the daily cap locally to see the "MAGI 過負荷" state quickly
+DAILY_LIMIT=3000

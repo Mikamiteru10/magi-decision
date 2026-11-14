@@ -19,11 +19,11 @@ EVA 风格的 MAGI 三贤人决议系统。MELCHIOR（科学家）、BALTHASAR�
   - Volume：宽容度；
   - Priority：表决规则；
   - EX_MODE：显示每台的承认概率。
-- **按公开标准管理密钥**：
-  - API Key 只存在于服务端；
-  - 每次提交前自动扫描密钥；
-  - 页面使用严格的 CSP；
-  - 服务端不记录案件内容。
+- **按公开标准上线**：
+  - API Key 只存在于服务端，每次提交前自动扫描密钥；
+  - Cloudflare Turnstile 人机验证、按访客限流，全站每日审议上限（默认 3000 次）给费用封顶；
+  - 进入前确认年满 18 岁，附使用条款与隐私说明；
+  - 页面使用严格的 CSP，服务端不记录案件内容，不使用 Cookie 或统计脚本。
 
 ## 实验结果
 
@@ -52,7 +52,7 @@ cp .dev.vars.example .dev.vars   # Windows 用记事本另存为 .dev.vars，填
 npm run dev                  # 打开 http://localhost:8787
 ```
 
-在 `.dev.vars` 里设 `MOCK=1` 可以不调用 API、使用假数据调界面。
+在 `.dev.vars` 里设 `MOCK=1` 可以不调用 API、使用假数据调界面。`.dev.vars.example` 里已经填好了 Cloudflare Turnstile 的测试密钥，它们总是通过验证，本地开发不需要另外申请。
 
 > Windows 的 PowerShell 默认禁止运行 npm 脚本，请在 cmd 里运行上述命令，或把 `npm` 写成 `npm.cmd`。
 
@@ -74,7 +74,7 @@ npm run dev                  # 打开 http://localhost:8787
 
 | 路径 | 内容 |
 | --- | --- |
-| `public/` | 网页：`index.html`、`document.js`（交互）、`engine.js`（表决规则）、`_headers`（安全响应头） |
+| `public/` | 网页：`index.html`、`document.js`（交互）、`engine.js`（表决规则）、`terms.html`（使用条款与隐私）、`_headers`（安全响应头） |
 | `public/fonts/` | 标题字体子集（Noto Serif JP Black，SIL OFL 1.1） |
 | `styles/document.less` | 样式源文件，编译为 `public/document.css` |
 | `src/worker.js` | Cloudflare Worker：提供网页与 `POST /api/deliberate` |
@@ -83,15 +83,61 @@ npm run dev                  # 打开 http://localhost:8787
 | `scripts/` | 密钥扫描、人格生成、字体子集生成 |
 | `test/` | 表决规则单元测试（`npm test`） |
 
-## 部署
+## 部署（公开上线）
+
+公开上线要满足 [Gemini API 条款](https://ai.google.dev/gemini-api/terms)的两点要求：
+
+- 面向欧洲经济区、瑞士、英国的用户时只能使用**付费服务**；
+- 网站不能面向、也不应可能被 **18 岁以下用户**使用。
+
+本项目的做法是使用付费层 Key，并在进入前确认用户年满 18 岁。
+
+### 1. Google：准备线上专用 Key（付费层）
+
+1. 在 [Google AI Studio](https://aistudio.google.com) 新建一个项目（例如 `magi-prod`），在其中生成 API Key。不要和开发 Key 共用。
+2. 给这个项目开通结算（Set up billing）。绑定结算账户后，该项目的调用就属于付费服务。
+3. 在 Google Cloud 控制台 → Billing → Budgets & alerts 设一个月度预算提醒（例如 5 美元）。
+4. （可选）在 APIs & Services → Credentials 中，把这把 Key 限制为只能调用 Generative Language API。
+
+真正的费用上限由 `wrangler.toml` 里的 `DAILY_LIMIT` 保证：每天最多 3000 次，按每次约 1400 tokens、每百万 tokens 0.10 美元计，单日最多约 0.4 美元。
+
+### 2. Cloudflare：第一次发布
 
 ```bash
-npx wrangler login
-npx wrangler secret put GEMINI_API_KEY   # 线上专用 Key，不要与开发 Key 共用
+npx wrangler login     # 浏览器里登录 Cloudflare
+npx wrangler deploy    # 得到网址：https://magi-decision.<你的子域名>.workers.dev
+```
+
+此时页面已经能打开，但还没配置密钥，审议会返回"服务端未配置"。这属于正常现象。
+
+### 3. Cloudflare Turnstile：人机验证
+
+1. Cloudflare 控制台 → Turnstile → Add widget。
+2. Hostname 填上一步得到的 `magi-decision.<你的子域名>.workers.dev`，Widget mode 选 Managed。
+3. 把 **Site Key** 填进 `wrangler.toml` 的 `TURNSTILE_SITE_KEY`。Site Key 是公开的，可以提交到仓库。
+4. 把 **Secret Key** 存为 Worker 密钥：
+
+```bash
+npx wrangler secret put TURNSTILE_SECRET
+```
+
+### 4. 写入线上 Key 并正式发布
+
+```bash
+npx wrangler secret put GEMINI_API_KEY   # 粘贴第 1 步的线上 Key
 npm run deploy                           # 先跑测试和密钥扫描，再发布
 ```
 
-在加上人机验证和限流之前，建议用 Cloudflare Access 只允许自己访问。
+打开网址，确认年满 18 岁后提一个案件，能看到结果就说明上线成功。
+
+### 日常运维
+
+| 要做的事 | 怎么做 |
+| --- | --- |
+| 调整每日上限 | 改 `wrangler.toml` 的 `DAILY_LIMIT`，再 `npm run deploy` |
+| 换 Key（例如怀疑泄露） | 在 AI Studio 删除旧 Key、生成新 Key，`npx wrangler secret put GEMINI_API_KEY` |
+| 查看报错 | Cloudflare 控制台 → Workers → magi-decision → Logs（只有状态码，没有案件内容） |
+| 屏蔽地区 | Worker 默认拒绝 Gemini API 不提供服务的中国大陆、香港、澳门；可用 `BLOCKED_COUNTRIES` 变量调整，以 [官方可用地区列表](https://ai.google.dev/gemini-api/docs/available-regions) 为准 |
 
 ## 修改人格
 

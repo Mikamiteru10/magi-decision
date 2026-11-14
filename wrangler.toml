@@ -1,4 +1,4 @@
-name = "magi-web"
+name = "magi-decision"
 main = "src/worker.js"
 compatibility_date = "2026-11-01"
 
@@ -8,6 +8,30 @@ compatibility_date = "2026-11-01"
 directory = "./public"
 binding = "ASSETS"
 
+# Public, non-secret settings.
+[vars]
+DAILY_LIMIT = "3000"             # whole-site cap on deliberations per UTC day (cost ceiling)
+TURNSTILE_SITE_KEY = ""          # public site key from the Cloudflare Turnstile dashboard
+
+# Burst limit per visitor: 6 deliberations per 60 s (approximate, per Cloudflare location).
+[[ratelimits]]
+name = "BURST_LIMITER"
+namespace_id = "1001"
+
+  [ratelimits.simple]
+  limit = 6
+  period = 60
+
+# Exact daily counter shared by every location.
+[[durable_objects.bindings]]
+name = "DAILY_COUNTER"
+class_name = "DailyCounter"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["DailyCounter"]
+
 # Secrets are never written here.
-#   Local:      .dev.vars            (git-ignored, see .dev.vars.example)
+#   Local:      .dev.vars   (git-ignored, see .dev.vars.example)
 #   Production: npx wrangler secret put GEMINI_API_KEY
+#               npx wrangler secret put TURNSTILE_SECRET

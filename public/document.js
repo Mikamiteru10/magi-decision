@@ -26,6 +26,7 @@ const state = {
   caseData: null,      // { proposal, context }
   result: null,        // last normalised API result
   busy: false,
+  ageOk: false,
 };
 
 // ---------------------------------------------------------------- sound (original, lightly tidied)
@@ -80,6 +81,7 @@ document.addEventListener('visibilitychange', () => {
 // ---------------------------------------------------------------- case panel
 function openPanel() {
   if (state.busy) return;
+  if (!state.ageOk) { showAgeGate(); return; }
   panelEl.hidden = false;
   proposalEl.value = state.caseData?.proposal || '';
   contextEl.value = state.caseData?.context || '';
@@ -128,16 +130,18 @@ async function deliberate() {
   const started = performance.now();
   let result = null, error = null;
   try {
+    const turnstileToken = await turnstile.token();
     const res = await fetch('/api/deliberate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(state.caseData),
+      body: JSON.stringify({ ...state.caseData, ageConfirmed: state.ageOk, turnstileToken }),
     });
     const data = await res.json().catch(() => ({}));
     if (res.ok) result = data; else error = data.error || `http_${res.status}`;
   } catch (e) {
     error = 'network';
   }
+  turnstile.renew();   // tokens are single-use: prepare the next one
   const wait = MIN_DELIBERATION_MS - (performance.now() - started);
   if (wait > 0) await new Promise(r => setTimeout(r, wait));
 
@@ -150,6 +154,11 @@ async function deliberate() {
 
 const ERROR_TEXT = {
   overload: 'MAGI 過負荷：请求太频繁，请稍后再试。',
+  rate_limited: 'MAGI 過負荷：审议太频繁，请一分钟后再试。',
+  daily_limit: 'MAGI 過負荷：今日审议次数已达上限，请明天（UTC 0 点后）再来。',
+  turnstile_failed: '人机验证未通过：请刷新页面后重试。',
+  age_required: '需要先确认已年满 18 岁。',
+  region_unavailable: '你所在的地区无法使用 Gemini API，审议功能不可用。',
   timeout: '回線途絶：模型响应超时，请重试。',
   network: '回線途絶：网络连接失败。',
   empty_proposal: '提案为空。',
@@ -215,13 +224,14 @@ function reset() {
 // ---------------------------------------------------------------- main trigger: click or space
 function trigger() {
   if (state.busy || !panelEl.hidden) return;
+  if (!state.ageOk) { showAgeGate(); return; }
   if (bodyEl.getAttribute('data-status') === 'voted') { reset(); return; }
   if (!state.caseData) { openPanel(); return; }
   deliberate();
 }
 $('.magi-box').addEventListener('click', trigger);
 window.addEventListener('keydown', e => {
-  if (!panelEl.hidden) return;
+  if (!panelEl.hidden || !ageEl.hidden) return;
   if (e.code === 'Space') { e.preventDefault(); trigger(); }
   if (e.key === 'Enter') { e.preventDefault(); openPanel(); }
 });
@@ -265,6 +275,71 @@ priorityEl.addEventListener('click', stop(() => {
   priorityEl.setAttribute('data-text', state.priority);
   rerender();
 }));
+
+// ---------------------------------------------------------------- 18+ confirmation
+// Required by the Gemini API terms. The choice is kept only in this browser.
+const ageEl = $('.age-gate');
+const AGE_KEY = 'magi-age-ok-v1';
+function readAgeOk() { try { return localStorage.getItem(AGE_KEY) === '1'; } catch (e) { return false; } }
+function showAgeGate() { ageEl.hidden = false; $('.age-card').focus(); }   // no default button: accepting must be deliberate
+$('.age-enter').addEventListener('click', () => {
+  state.ageOk = true;
+  try { localStorage.setItem(AGE_KEY, '1'); } catch (e) {}
+  ageEl.hidden = true;
+});
+$('.age-leave').addEventListener('click', () => {
+  $('.age-left').hidden = false;
+  ageEl.querySelectorAll('button').forEach(b => { b.disabled = true; });
+});
+ageEl.addEventListener('click', e => e.stopPropagation());
+state.ageOk = readAgeOk();
+if (!state.ageOk) showAgeGate();
+
+// ---------------------------------------------------------------- Cloudflare Turnstile
+// Invisible unless Cloudflare needs the visitor to click. Each token is single-use, so the
+// widget is reset after every request to prepare the next one.
+const turnstile = (() => {
+  let widgetId = null, current = null, waiters = [];
+  const deliver = t => { current = t; waiters.splice(0).forEach(w => w(t)); };
+  return {
+    async init(siteKey) {
+      if (!siteKey) return;
+      await new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+        s.async = true;
+        s.onload = resolve;
+        s.onerror = reject;
+        document.head.appendChild(s);
+      });
+      widgetId = window.turnstile.render('.ts-box', {
+        sitekey: siteKey,
+        theme: 'dark',
+        appearance: 'interaction-only',
+        callback: deliver,
+        'expired-callback': () => { current = null; window.turnstile.reset(widgetId); },
+        'error-callback': () => { current = null; },
+      });
+    },
+    // Resolves with a fresh token, or null when Turnstile is not configured (local MOCK mode).
+    token(timeoutMs = 20000) {
+      if (widgetId === null) return Promise.resolve(null);
+      if (current) { const t = current; current = null; return Promise.resolve(t); }
+      return new Promise(resolve => {
+        const timer = setTimeout(() => resolve(null), timeoutMs);
+        waiters.push(t => { clearTimeout(timer); current = null; resolve(t); });
+      });
+    },
+    renew() {
+      if (widgetId !== null) { current = null; window.turnstile.reset(widgetId); }
+    },
+  };
+})();
+
+fetch('/api/config')
+  .then(r => r.json())
+  .then(cfg => turnstile.init(cfg.turnstileSiteKey))
+  .catch(() => {});
 
 $('.code').textContent = 100 + Math.floor(Math.random() * 600);
 setTimeout(() => bodyEl.removeAttribute('data-loading'), 1000);

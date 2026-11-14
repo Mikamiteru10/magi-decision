@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="data:,">
     <title>MAGI System 決議系統</title>
     <link rel="stylesheet" href="document.css">
     <meta name="description" content="MAGI 三贤人决议系统：MELCHIOR、BALTHASAR、CASPER 三重人格对你的提案进行表决。">
@@ -65,7 +66,7 @@
         </div>
         <div class="notice" hidden></div>
         <footer>
-            <p class="advisory">MAGI 的决议仅为建议，最终决定权在你。</p>
+            <p class="advisory">MAGI 的决议仅为建议，最终决定权在你。 · <a href="terms.html" target="_blank" rel="noopener">使用条款与隐私</a></p>
             <p>
                 UI <a href="https://github.com/itorr/magi" target="_blank" rel="noopener">itorr/magi</a>
                 ·
@@ -91,6 +92,22 @@
                 <button type="submit" class="case-submit">提訴</button>
             </div>
         </form>
+    </div>
+
+    <div class="ts-box" aria-live="polite"></div>
+
+    <div class="age-gate" hidden>
+        <div class="age-card" role="dialog" aria-modal="true" aria-labelledby="age-title" tabindex="-1">
+            <h3 id="age-title">警告 · CAUTION</h3>
+            <p>本系统通过 Google Gemini API 进行审议，<b>仅面向年满 18 岁的用户</b>。</p>
+            <p>进入即表示你已年满 18 岁，并同意<a href="terms.html" target="_blank" rel="noopener">《使用条款与隐私说明》</a>。请不要输入你或他人的敏感个人信息。</p>
+            <p class="age-en">For adults (18+) only. By entering you confirm you are 18 or older and accept the <a href="terms.html" target="_blank" rel="noopener">terms &amp; privacy notice</a>.</p>
+            <div class="case-actions">
+                <button type="button" class="age-leave">离开</button>
+                <button type="button" class="age-enter">已满 18 岁，进入</button>
+            </div>
+            <p class="age-left" hidden>已退出。你可以直接关闭本页面。</p>
+        </div>
     </div>
 
     <script type="module" src="document.js"></script>
