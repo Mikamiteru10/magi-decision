@@ -17,7 +17,7 @@ binding = "ASSETS"
 [vars]
 DAILY_LIMIT = "3000"             # whole-site cap on deliberations per UTC day (cost ceiling)
 TURNSTILE_SITE_KEY = "0x4AAAAAAGAse1ut6h-CdhOl"          # public site key from the Cloudflare Turnstile dashboard
-BLOCKED_COUNTRIES = "MO"
+BLOCKED_COUNTRIES = ""
 # Burst limit per visitor: 6 deliberations per 60 s (approximate, per Cloudflare location).
 [[ratelimits]]
 name = "BURST_LIMITER"
